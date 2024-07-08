@@ -27,7 +27,7 @@ app.use(cors({
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 12!')
+  res.send('Bye World again 13!')
 });
 
 app.listen(PORT, () => {
@@ -35,15 +35,27 @@ app.listen(PORT, () => {
 });
 
 app.get("/api/history", async (req, res) => {
-  getData().then((data) => {
+  getData('dbo.history').then((data) => {
     res.json(data);
   })
 });
 
 app.post("/api/history", async (request, response) => {
-  console.log("req  body " + request.body);
-  let order = { ...request.body };
-  addData(order[0]).then(data  => {
+  let data = { ...request.body };
+  addDataHistory(data[0]).then(data => {
+    response.status(201).json(data);
+  })
+})
+
+app.get("/api/users", async (req, res) => {
+  getData('dbo.users').then((data) => {
+    res.json(data);
+  })
+});
+
+app.post("/api/users", async (request, response) => {
+  let data = { ...request.body };
+  addDataUsers(data[0]).then(data => {
     response.status(201).json(data);
   })
 })
@@ -52,26 +64,39 @@ app.post("/api/history", async (request, response) => {
 console.log("Starting...");
 
 
-async function getData() {
+async function getData(table) {
   try {
     var poolConnection = await sql.connect(config);
     console.log("Reading rows from the Table...");
-    const resultSet = await poolConnection.request().query('SELECT * FROM dbo.history');
+    const resultSet = await poolConnection.request().query('SELECT * FROM ' + table);
     console.log(JSON.stringify(resultSet));
     return resultSet;
   } catch (err) {
     console.error(err.message)
     console.log("Reattempting");
-    getData();
+    getData(table);
   }
 }
 
-async function addData(data) {
+async function addDataHistory(data) {
   try {
     console.log("data is " + JSON.stringify(data));
     let pool = await sql.connect(config);
     let insertProduct = await pool.request()
     .query(`INSERT INTO dbo.history (ipaddr, mode, time) VALUES ('${data.ipaddr}', '${data.mode}', '${data.time}')`);
+    return insertProduct.recordsets;
+  }
+  catch (err) {
+    console.log(err);
+  }
+}
+
+async function addDataUsers(data) {
+  try {
+    console.log("data is " + JSON.stringify(data));
+    let pool = await sql.connect(config);
+    let insertProduct = await pool.request()
+    .query(`INSERT INTO dbo.users (username, password, data) VALUES ('${data.username}', '${data.password}', '${data.data}')`);
     return insertProduct.recordsets;
   }
   catch (err) {
