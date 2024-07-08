@@ -27,7 +27,7 @@ app.use(cors({
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 13!')
+  res.send('Bye World again 15!')
 });
 
 app.listen(PORT, () => {
@@ -96,7 +96,12 @@ async function addDataUsers(data) {
     console.log("data is " + JSON.stringify(data));
     let pool = await sql.connect(config);
     let insertProduct = await pool.request()
-    .query(`INSERT INTO dbo.users (username, password, data) VALUES ('${data.username}', '${data.password}', '${data.data}')`);
+    .query(`INSERT INTO dbo.users (username, password, data, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
+      hollow, keyboard, speed, toppll, topwhite)  
+      VALUES ('${data.username}', '${data.password}', '${data.data}', '${data.easy}', '${data.medium}', 
+      '${data.oll}', '${data.pll}', '${data.easy2}', '${data.oll2}', '${data.pbl2}', '${data.m_easy}', 
+      '${data.m_medium}', '${data.audioon}', '${data.background}', '${data.hollow}', '${data.keyboard}', 
+      '${data.speed}', '${data.toppll}', '${data.topwhite}')`);
     return insertProduct.recordsets;
   }
   catch (err) {
