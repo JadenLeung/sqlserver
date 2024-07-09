@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
     "express": "^4.19.2",
     "mssql": "^6.4.1"
   }
