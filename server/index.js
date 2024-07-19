@@ -86,7 +86,8 @@ async function getData(table, data) {
     console.log("Reading rows from the Table...");
     const resultSet = await poolConnection.request().query('SELECT * FROM ' + table);
     console.log(JSON.stringify(resultSet));
-    if (data == "false")  {
+    console.log("Data is "+ data);
+    if (data == false)  {
       return resultSet;
     }
     const returned = resultSet.recordsets[0];
@@ -107,8 +108,6 @@ async function getData(table, data) {
     return success;
   } catch (err) {
     console.error(err.message)
-    console.log("Reattempting");
-    getData(table, data);
   }
 }
 
