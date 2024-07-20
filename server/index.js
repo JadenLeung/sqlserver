@@ -28,7 +28,7 @@ app.use(cors({
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 20!')
+  res.send('Bye World again 21!')
 });
 
 app.listen(PORT, () => {
@@ -87,7 +87,7 @@ async function getData(table, data) {
     const resultSet = await poolConnection.request().query('SELECT * FROM ' + table);
     console.log(JSON.stringify(resultSet));
     console.log("Data is "+ data);
-    if (data == false)  {
+    if (data == false || data == 'false')  {
       return resultSet;
     }
     const returned = resultSet.recordsets[0];
