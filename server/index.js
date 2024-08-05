@@ -6,7 +6,6 @@ const cors = require("cors");
 const sql = require('mssql');
 const mysql = require('mysql2');
 
-const ismssql = true;
 
 const config = {
     user: process.env.SQLUSERNAME, 
@@ -23,7 +22,7 @@ const config = {
 }
 
 const config2 = {
-  host: '72.70.58.195',
+  host: process.env.homeIP,
   user: process.env.SQLUSERNAME2, 
   password: process.env.SQLPASSWORD2,
   database: 'mydb'
@@ -40,7 +39,7 @@ app.use(cors({
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 24!')
+  res.send('Bye World again 26!')
 });
 
 app.listen(PORT, () => {
@@ -75,9 +74,20 @@ app.get("/api/users2", async (req, res) => {
   res.json(results)
 });
 
-
-
-
+app.get("/api/users3", async (req, res) => {
+  let data = [false];
+  const waitfor = req.query.waitfor;
+  await wait(waitfor);
+  if (req.query.username != undefined) {
+    console.log("Not undefined");
+    const username = req.query.username;
+    const password = req.query.password;
+    data = {username: username, password: password}
+  }
+  console.log("Data is " + data);
+  const results = await getData2('users', data)
+  res.json(results)
+});
 
 app.put("/api/users2", async (req, res) => {
   let data = { ...req.body };
@@ -88,6 +98,15 @@ app.put("/api/users2", async (req, res) => {
 
 app.post("/api/users2", async (req, res) => {
   let data = { ...req.body };
+  const results = await updateUsers2(data[0])
+  res.json(results);
+})
+
+app.post("/api/users3", async (req, res) => {
+  let data = { ...req.body };
+  let waitfor = data[0].waitfor;
+  console.log("Waiting for " + waitfor);
+  await wait(waitfor);
   const results = await updateUsers2(data[0])
   res.json(results);
 })
@@ -129,7 +148,7 @@ async function getData2(table, data) {
     return success;
   } catch (err) {
     console.error(err.message);
-    throw err; // Re-throw error to be handled by the calling function
+    return "error: " + err.message;
   }
 }
 
@@ -142,6 +161,7 @@ async function addDataHistory2(data) {
    
   } catch (err) {
     console.log(err);
+    return "error: " + err.message;
   }
 }
 
@@ -158,6 +178,7 @@ async function addDataUsers2(data) {
    
   } catch (err) {
     console.log(err);
+    return "error: " + err.message;
   }
 }
 
@@ -175,5 +196,10 @@ async function updateUsers2(data) {
    
   } catch (err) {
     console.log(err);
+    return "error: " + err.message;
   }
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
