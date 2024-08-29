@@ -3,7 +3,7 @@ const CryptoJS = require("crypto-js");
 const PORT = process.env.PORT || 3002;
 const app = express();
 const cors = require("cors");
-const sql = require('mssql');
+//const sql = require('mssql');
 const mysql = require('mysql2');
 
 
@@ -39,7 +39,7 @@ app.use(cors({
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 26!')
+  res.send('Bye World again 27!')
 });
 
 app.listen(PORT, () => {
@@ -74,21 +74,6 @@ app.get("/api/users2", async (req, res) => {
   res.json(results)
 });
 
-app.get("/api/users3", async (req, res) => {
-  let data = [false];
-  const waitfor = req.query.waitfor;
-  await wait(waitfor);
-  if (req.query.username != undefined) {
-    console.log("Not undefined");
-    const username = req.query.username;
-    const password = req.query.password;
-    data = {username: username, password: password}
-  }
-  console.log("Data is " + data);
-  const results = await getData2('users', data)
-  res.json(results)
-});
-
 app.put("/api/users2", async (req, res) => {
   let data = { ...req.body };
   const results = await addDataUsers2(data[0]);
@@ -98,15 +83,6 @@ app.put("/api/users2", async (req, res) => {
 
 app.post("/api/users2", async (req, res) => {
   let data = { ...req.body };
-  const results = await updateUsers2(data[0])
-  res.json(results);
-})
-
-app.post("/api/users3", async (req, res) => {
-  let data = { ...req.body };
-  let waitfor = data[0].waitfor;
-  console.log("Waiting for " + waitfor);
-  await wait(waitfor);
   const results = await updateUsers2(data[0])
   res.json(results);
 })
