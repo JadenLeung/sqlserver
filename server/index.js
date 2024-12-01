@@ -1,7 +1,10 @@
 const express = require("express");
 const CryptoJS = require("crypto-js");
+const { exec } = require('child_process');
+const fs = require('fs');
 const PORT = process.env.PORT || 3002;
 const app = express();
+const bodyParser = require('body-parser');
 const cors = require("cors");
 //const sql = require('mssql');
 const mysql = require('mysql2');
@@ -33,13 +36,15 @@ const pool = mysql.createPool(config2).promise();
 app.use(express.json());
 
 app.use(cors({
-  origin: 'http://localhost:8000'
+  origin: 'http://localhost:5173'
 }));
+
+app.use(bodyParser.text());
 
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 27!')
+  res.send('Bye World again 29!')
 });
 
 app.listen(PORT, () => {
@@ -52,10 +57,23 @@ app.get("/api/history2", async (req, res) => {
   res.json(data);
 });
 
+app.get("/api/portfolio", async (req, res) => {
+  const data = await getData2('portfolio', false);
+  res.json(data);
+});
+
+
+
 
 app.post("/api/history2", async (req, res) => {
   let data = { ...req.body };
-  const results = await addDataHistory2(data[0]);
+  const results = await addData(data[0], "history");
+  res.json(results);
+});
+
+app.post("/api/portfolio", async (req, res) => {
+  let data = { ...req.body };
+  const results = await addData(data[0], "portfolio");
   res.json(results);
 });
 
@@ -102,7 +120,6 @@ async function getData2(table, data) {
     console.log("Data is " + data);
 
     if (data == false || data == "false") {
-      console.log("her");
       return rows;
     }
 
@@ -129,10 +146,10 @@ async function getData2(table, data) {
 }
 
 
-async function addDataHistory2(data) {
+async function addData(data, table) {
   try {
     console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO history (ipaddr, mode, time) VALUES ('${data.ipaddr}', '${data.mode}', '${data.time}')`);
+    const [rows] = await pool.query(`INSERT INTO ${table} (ipaddr, mode, time) VALUES ('${data.ipaddr}', '${data.mode}', '${data.time}')`);
       return rows;
    
   } catch (err) {
@@ -144,12 +161,14 @@ async function addDataHistory2(data) {
 async function addDataUsers2(data) {
   try {
     console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO users (username, password, data, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
-      hollow, keyboard, speed, toppll, topwhite)  
-      VALUES ('${data.username}', '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', '${data.data}', '${data.easy}', '${data.medium}', 
+    const [rows] = await pool.query(`INSERT INTO users (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
+      hollow, keyboard, speed, toppll, topwhite, m_34, m_4)  
+      VALUES ('${data.username}', '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', '${data.data}', 
+      '${data.c_day}', '${data.c_day2}', '${data.c_today}', '${data.c_today2}','${data.c_week}', '${data.cdate}', '${data.cdate2}', '${data.cdate3}',
+      '${data.easy}', '${data.medium}', 
       '${data.oll}', '${data.pll}', '${data.easy2}', '${data.oll2}', '${data.pbl2}', '${data.m_easy}', 
       '${data.m_medium}', '${data.audioon}', '${data.background}', '${data.hollow}', '${data.keyboard}', 
-      '${data.speed}', '${data.toppll}', '${data.topwhite}')`);
+      '${data.speed}', '${data.toppll}', '${data.topwhite}', '${data.m_34}', '${data.m_4}')`);
       return rows;
    
   } catch (err) {
@@ -163,10 +182,11 @@ async function updateUsers2(data) {
   try {
     console.log("data is " + JSON.stringify(data));
     const [rows] = await pool .query(`UPDATE users 
-      SET data='${data.data}', easy='${data.easy}', medium='${data.medium}', 
+      SET data='${data.data}', c_day='${data.c_day}', c_day2='${data.c_day2}', c_today='${data.c_today}', c_today2='${data.c_today2}', c_week='${data.c_week}', cdate='${data.cdate}', cdate2='${data.cdate2}', cdate3='${data.cdate3}', 
+      easy='${data.easy}', medium='${data.medium}', 
       oll='${data.oll}', pll='${data.pll}', easy2='${data.easy2}', oll2='${data.oll2}', pbl2='${data.pbl2}', m_easy='${data.m_easy}', 
       m_medium='${data.m_medium}', audioon='${data.audioon}', background='${data.background}', hollow='${data.hollow}', keyboard='${data.keyboard}', 
-      speed='${data.speed}', toppll='${data.toppll}', topwhite='${data.topwhite}'
+      speed='${data.speed}', toppll='${data.toppll}', topwhite='${data.topwhite}', m_34='${data.m_34}', m_4='${data.m_4}'
       WHERE username = '${data.username}'`);
       return rows;
    
