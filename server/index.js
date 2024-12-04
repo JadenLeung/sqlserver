@@ -44,7 +44,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 29!')
+  res.send('Bye World again 31!')
 });
 
 app.listen(PORT, () => {
@@ -160,41 +160,63 @@ async function addData(data, table) {
 
 async function addDataUsers2(data) {
   try {
-    console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO users (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
-      hollow, keyboard, speed, toppll, topwhite, m_34, m_4)  
-      VALUES ('${data.username}', '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', '${data.data}', 
-      '${data.c_day}', '${data.c_day2}', '${data.c_today}', '${data.c_today2}','${data.c_week}', '${data.cdate}', '${data.cdate2}', '${data.cdate3}',
-      '${data.easy}', '${data.medium}', 
-      '${data.oll}', '${data.pll}', '${data.easy2}', '${data.oll2}', '${data.pbl2}', '${data.m_easy}', 
-      '${data.m_medium}', '${data.audioon}', '${data.background}', '${data.hollow}', '${data.keyboard}', 
-      '${data.speed}', '${data.toppll}', '${data.topwhite}', '${data.m_34}', '${data.m_4}')`);
-      return rows;
-   
+    console.log("Data being inserted:", JSON.stringify(data));
+
+    const query = `
+      INSERT INTO users 
+      (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, 
+      easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background, hollow, keyboard, 
+      speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek)  
+      VALUES (?, '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      data.username, data.data, data.c_day, data.c_day2, data.c_today, data.c_today2, 
+      data.c_week, data.cdate, data.cdate2, data.cdate3, data.easy, data.medium, data.oll, data.pll, 
+      data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, data.audioon, data.background, 
+      data.hollow, data.keyboard, data.speed, data.toppll, data.topwhite, data.m_34, data.m_4, 
+      data.c_day_bweek, data.c_day2_bweek
+    ];
+
+    const [rows] = await pool.query(query, values);
+    console.log("Insert result:", rows);
+    return rows;
   } catch (err) {
-    console.log(err);
+    console.error("Error inserting data:", err.message);
     return "error: " + err.message;
   }
 }
+
 
 
 async function updateUsers2(data) {
   try {
-    console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool .query(`UPDATE users 
-      SET data='${data.data}', c_day='${data.c_day}', c_day2='${data.c_day2}', c_today='${data.c_today}', c_today2='${data.c_today2}', c_week='${data.c_week}', cdate='${data.cdate}', cdate2='${data.cdate2}', cdate3='${data.cdate3}', 
-      easy='${data.easy}', medium='${data.medium}', 
-      oll='${data.oll}', pll='${data.pll}', easy2='${data.easy2}', oll2='${data.oll2}', pbl2='${data.pbl2}', m_easy='${data.m_easy}', 
-      m_medium='${data.m_medium}', audioon='${data.audioon}', background='${data.background}', hollow='${data.hollow}', keyboard='${data.keyboard}', 
-      speed='${data.speed}', toppll='${data.toppll}', topwhite='${data.topwhite}', m_34='${data.m_34}', m_4='${data.m_4}'
-      WHERE username = '${data.username}'`);
-      return rows;
-   
+    const query = `
+      UPDATE users 
+      SET data=?, c_day=?, c_day2=?, c_today=?, c_today2=?, c_week=?, cdate=?, cdate2=?, cdate3=?, 
+      easy=?, medium=?, oll=?, pll=?, easy2=?, oll2=?, pbl2=?, m_easy=?, m_medium=?, 
+      audioon=?, background=?, hollow=?, keyboard=?, speed=?, toppll=?, topwhite=?, 
+      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=? 
+      WHERE username=?
+    `;
+
+    const values = [
+      data.data, data.c_day, data.c_day2, data.c_today, data.c_today2, data.c_week, 
+      data.cdate, data.cdate2, data.cdate3, data.easy, data.medium, data.oll, 
+      data.pll, data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, 
+      data.audioon, data.background, data.hollow, data.keyboard, data.speed, 
+      data.toppll, data.topwhite, data.m_34, data.m_4, data.c_day_bweek, 
+      data.c_day2_bweek, data.username
+    ];
+
+    const [rows] = await pool.query(query, values);
+    return rows;
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return "error: " + err.message;
   }
 }
+
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
