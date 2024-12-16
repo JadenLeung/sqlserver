@@ -44,7 +44,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 31!')
+  res.send('Bye World again 33!')
 });
 
 app.listen(PORT, () => {
@@ -166,7 +166,7 @@ async function addDataUsers2(data) {
       INSERT INTO users 
       (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, 
       easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background, hollow, keyboard, 
-      speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek)  
+      speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek, border_width)  
       VALUES (?, '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
@@ -175,7 +175,7 @@ async function addDataUsers2(data) {
       data.c_week, data.cdate, data.cdate2, data.cdate3, data.easy, data.medium, data.oll, data.pll, 
       data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, data.audioon, data.background, 
       data.hollow, data.keyboard, data.speed, data.toppll, data.topwhite, data.m_34, data.m_4, 
-      data.c_day_bweek, data.c_day2_bweek
+      data.c_day_bweek, data.c_day2_bweek, data.border_width
     ];
 
     const [rows] = await pool.query(query, values);
@@ -196,7 +196,7 @@ async function updateUsers2(data) {
       SET data=?, c_day=?, c_day2=?, c_today=?, c_today2=?, c_week=?, cdate=?, cdate2=?, cdate3=?, 
       easy=?, medium=?, oll=?, pll=?, easy2=?, oll2=?, pbl2=?, m_easy=?, m_medium=?, 
       audioon=?, background=?, hollow=?, keyboard=?, speed=?, toppll=?, topwhite=?, 
-      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=? 
+      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=?, border_width=? 
       WHERE username=?
     `;
 
@@ -206,8 +206,8 @@ async function updateUsers2(data) {
       data.pll, data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, 
       data.audioon, data.background, data.hollow, data.keyboard, data.speed, 
       data.toppll, data.topwhite, data.m_34, data.m_4, data.c_day_bweek, 
-      data.c_day2_bweek, data.username
-    ];
+      data.c_day2_bweek, data.border_width, data.username
+    ]; // make sure username is at the end
 
     const [rows] = await pool.query(query, values);
     return rows;
