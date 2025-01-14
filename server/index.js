@@ -44,7 +44,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 36!')
+  res.send('Bye World again 37!')
 });
 
 app.listen(PORT, () => {
@@ -162,14 +162,14 @@ async function addDataUsers2(data) {
   try {
     console.log("data is " + JSON.stringify(data));
     const [rows] = await pool.query(`INSERT INTO users (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
-      hollow, keyboard, speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek, border_width, blind2x2, blind3x3)  
+      hollow, keyboard, speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek, border_width, blind2x2, blind3x3, marathon, marathon2)  
       VALUES ('${data.username}', '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', '${data.data}', 
       '${data.c_day}', '${data.c_day2}', '${data.c_today}', '${data.c_today2}','${data.c_week}', '${data.cdate}', '${data.cdate2}', '${data.cdate3}',
       '${data.easy}', '${data.medium}', 
       '${data.oll}', '${data.pll}', '${data.easy2}', '${data.oll2}', '${data.pbl2}', '${data.m_easy}', 
       '${data.m_medium}', '${data.audioon}', '${data.background}', '${data.hollow}', '${data.keyboard}', 
       '${data.speed}', '${data.toppll}', '${data.topwhite}', '${data.m_34}', '${data.m_4}'
-      , '${data.c_day_bweek}', '${data.c_day2_bweek}', '${data.border_width}', '${data.blind2x2}', '${data.blind3x3}')`);
+      , '${data.c_day_bweek}', '${data.c_day2_bweek}', '${data.border_width}', '${data.blind2x2}', '${data.blind3x3}', '${data.marathon}', '${data.marathon2}' )`);
       return rows;
    
   } catch (err) {
@@ -188,7 +188,7 @@ async function updateUsers2(data) {
       SET data=?, c_day=?, c_day2=?, c_today=?, c_today2=?, c_week=?, cdate=?, cdate2=?, cdate3=?, 
       easy=?, medium=?, oll=?, pll=?, easy2=?, oll2=?, pbl2=?, m_easy=?, m_medium=?, 
       audioon=?, background=?, hollow=?, keyboard=?, speed=?, toppll=?, topwhite=?, 
-      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=?, border_width=?, blind2x2=?, blind3x3=? 
+      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=?, border_width=?, blind2x2=?, blind3x3=?, marathon=?, marathon2=? 
       WHERE username=?
     `;
 
@@ -198,7 +198,7 @@ async function updateUsers2(data) {
       data.pll, data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, 
       data.audioon, data.background, data.hollow, data.keyboard, data.speed, 
       data.toppll, data.topwhite, data.m_34, data.m_4, data.c_day_bweek, 
-      data.c_day2_bweek, data.border_width, data.blind2x2, data.blind3x3, data.username
+      data.c_day2_bweek, data.border_width, data.blind2x2, data.blind3x3, data.marathon, data.marathon2, data.username
     ]; // make sure username is at the end
 
     const [rows] = await pool.query(query, values);
