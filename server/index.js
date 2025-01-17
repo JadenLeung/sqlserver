@@ -149,7 +149,7 @@ async function getData2(table, data) {
 async function addData(data, table) {
   try {
     console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO ${table} (ipaddr, mode, time) VALUES ('${data.ipaddr}', '${data.mode}', '${data.time}')`);
+    const [rows] = await pool.query(`INSERT INTO ${table} (ipaddr, mode) VALUES ('${data.ipaddr}', '${data.mode}')`);
       return rows;
    
   } catch (err) {
