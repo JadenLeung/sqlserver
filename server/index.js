@@ -44,7 +44,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 42!')
+  res.send('Bye World again 43!')
 });
 
 app.listen(PORT, () => {
@@ -102,6 +102,12 @@ app.put("/api/users2", async (req, res) => {
 app.post("/api/users2", async (req, res) => {
   let data = { ...req.body };
   const results = await updateUsers2(data[0])
+  res.json(results);
+})
+
+app.post("/api/suggestions", async (req, res) => {
+  let data = { ...req.body };
+  const results = await addSuggestion(data[0])
   res.json(results);
 })
 
@@ -172,6 +178,19 @@ async function addDataUsers2(data) {
       , '${data.c_day_bweek}', '${data.c_day2_bweek}', '${data.border_width}', '${data.blind2x2}', 
       '${data.blind3x3}', '${data.marathon}', '${data.marathon2}', '${data.marathon3}', '${data.bandaged3}'
       , '${data.race2x2}', '${data.race3x3}', '${data.marathon4}', '${data.marathon5}' )`);
+      return rows;
+   
+  } catch (err) {
+    console.log(err);
+    return "error: " + err.message;
+  }
+}
+
+async function addSuggestion(data) {
+  try {
+    console.log("data is " + JSON.stringify(data));
+    const [rows] = await pool.query(`INSERT INTO suggestions (username, suggestion)  
+      VALUES ('${data.username}', '${data.suggestion}')`);
       return rows;
    
   } catch (err) {
