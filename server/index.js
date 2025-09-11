@@ -36,7 +36,7 @@ const pool = mysql.createPool(config2).promise();
 app.use(express.json());
 
 app.use(cors({
-  origin: 'http://localhost:5173'
+  origin: ["http://localhost:5173", "http://localhost:8000"],
 }));
 
 app.use(bodyParser.text());
@@ -44,7 +44,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 43!')
+  res.send('Bye World again 45!')
 });
 
 app.listen(PORT, () => {
@@ -53,12 +53,12 @@ app.listen(PORT, () => {
 
 
 app.get("/api/history2", async (req, res) => {
-  const data = await getData2('history', false);
+  const data = await getData('history');
   res.json(data);
 });
 
 app.get("/api/portfolio", async (req, res) => {
-  const data = await getData2('portfolio', false);
+  const data = await getData('portfolio');
   res.json(data);
 });
 
@@ -80,15 +80,15 @@ app.post("/api/portfolio", async (req, res) => {
 
 
 app.get("/api/users2", async (req, res) => {
-  let data = [false];
-  if (req.query.username != undefined) {
-    console.log("Not undefined");
-    const username = req.query.username;
-    const password = req.query.password;
-    data = {username: username, password: password}
-  }
-  console.log("Data is " + data);
-  const results = await getData2('users', data)
+  const username = req.query.username;
+  const results = await getUserData(username);
+  res.json(results)
+});
+
+app.get("/api/hasuser", async (req, res) => {
+  const username = req.query.username;
+  const password = req.query.password;
+  const results = await hasUser(username, password);
   res.json(results)
 });
 
@@ -118,33 +118,42 @@ console.log("Starting...");
 
 
 
-async function getData2(table, data) {
+async function getData(table) {
   try {
     console.log("Reading rows from the Table...");
     const [rows] = await pool.query(`SELECT * FROM ${table}`);
     console.log(JSON.stringify(rows));
-    console.log("Data is " + data);
+    return rows;
+  } catch (err) {
+    console.error(err.message);
+    return "error: " + err.message;
+  }
+}
 
-    if (data == false || data == "false") {
-      return rows;
+async function getUserData(username, password) {
+  try {
+    console.log("Reading rows from the Table...");
+    let [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
+    console.log(JSON.stringify(rows));
+    delete rows[0].password;
+    return rows[0];
+  } catch (err) {
+    console.error(err.message);
+    return "error: " + err.message;
+  }
+}
+
+async function hasUser(username, password) {
+  try {
+    console.log("Reading rows from the Table...");
+    const [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
+
+    if (rows.length === 0) {
+      return {user: false, password: false};
     }
-
-    const username = data.username;
-    const password = data.password;
-    let success = false;
-
-    console.log("rows is " + rows);
-
-    rows.forEach((obj) => {
-      const bytes = CryptoJS.AES.decrypt(obj.password, process.env.SQLSALT);
-      const originalText = bytes.toString(CryptoJS.enc.Utf8);
-      console.log(originalText);
-      if (obj.username === username && originalText === password) {
-        success = true;
-      }
-    });
-
-    return success;
+    const bytes = CryptoJS.AES.decrypt(rows[0].password, process.env.SQLSALT);
+    const originalText = bytes.toString(CryptoJS.enc.Utf8);
+    return {user: true, password: originalText === password};
   } catch (err) {
     console.error(err.message);
     return "error: " + err.message;
@@ -167,21 +176,79 @@ async function addData(data, table) {
 async function addDataUsers2(data) {
   try {
     console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO users (username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, background,
-      hollow, keyboard, speed, toppll, topwhite, m_34, m_4, c_day_bweek, c_day2_bweek, border_width, blind2x2, blind3x3, marathon, marathon2, marathon3, bandaged3, race2x2, race3x3, marathon4, marathon5)  
-      VALUES ('${data.username}', '${CryptoJS.AES.encrypt(data.password, process.env.SQLSALT)}', '${data.data}', 
-      '${data.c_day}', '${data.c_day2}', '${data.c_today}', '${data.c_today2}','${data.c_week}', '${data.cdate}', '${data.cdate2}', '${data.cdate3}',
-      '${data.easy}', '${data.medium}', 
-      '${data.oll}', '${data.pll}', '${data.easy2}', '${data.oll2}', '${data.pbl2}', '${data.m_easy}', 
-      '${data.m_medium}', '${data.audioon}', '${data.background}', '${data.hollow}', '${data.keyboard}', 
-      '${data.speed}', '${data.toppll}', '${data.topwhite}', '${data.m_34}', '${data.m_4}'
-      , '${data.c_day_bweek}', '${data.c_day2_bweek}', '${data.border_width}', '${data.blind2x2}', 
-      '${data.blind3x3}', '${data.marathon}', '${data.marathon2}', '${data.marathon3}', '${data.bandaged3}'
-      , '${data.race2x2}', '${data.race3x3}', '${data.marathon4}', '${data.marathon5}' )`);
-      return rows;
+    
+    // The SQL query with placeholders for each value
+    const sql = `
+      INSERT INTO users (
+        username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, 
+        cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, 
+        background, hollow, keyboard, speed, toppll, topwhite, m_34, m_4, c_day_bweek, 
+        c_day2_bweek, border_width, blind2x2, blind3x3, marathon, marathon2, marathon3, 
+        bandaged3, race2x2, race3x3, marathon4, marathon5, keymappings
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?
+      )`;
+
+    // An array containing all the data values in the same order as the placeholders
+    const values = [
+      data.username,
+      // Use the CryptoJS library to encrypt the password before sending
+      CryptoJS.AES.encrypt(data.password, process.env.SQLSALT).toString(),
+      data.data,
+      data.c_day,
+      data.c_day2,
+      data.c_today,
+      data.c_today2,
+      data.c_week,
+      data.cdate,
+      data.cdate2,
+      data.cdate3,
+      data.easy,
+      data.medium,
+      data.oll,
+      data.pll,
+      data.easy2,
+      data.oll2,
+      data.pbl2,
+      data.m_easy,
+      data.m_medium,
+      data.audioon,
+      data.background,
+      data.hollow,
+      data.keyboard,
+      data.speed,
+      data.toppll,
+      data.topwhite,
+      data.m_34,
+      data.m_4,
+      data.c_day_bweek,
+      data.c_day2_bweek,
+      data.border_width,
+      data.blind2x2,
+      data.blind3x3,
+      data.marathon,
+      data.marathon2,
+      data.marathon3,
+      data.bandaged3,
+      data.race2x2,
+      data.race3x3,
+      data.marathon4,
+      data.marathon5,
+      // Pass the keymappings object directly
+      data.keymappings,
+    ];
+    
+    // Execute the query using the pool and the values array
+    const [rows] = await pool.query(sql, values);
+    
+    return rows;
    
   } catch (err) {
-    console.log(err);
+    console.error(err); // Use console.error for errors
     return "error: " + err.message;
   }
 }
@@ -210,7 +277,7 @@ async function updateUsers2(data) {
       easy=?, medium=?, oll=?, pll=?, easy2=?, oll2=?, pbl2=?, m_easy=?, m_medium=?, 
       audioon=?, background=?, hollow=?, keyboard=?, speed=?, toppll=?, topwhite=?, 
       m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=?, border_width=?, blind2x2=?, blind3x3=?, marathon=?, marathon2=?, 
-      marathon3=?, bandaged3=?, race2x2=?, race3x3=?, marathon4=?, marathon5=?
+      marathon3=?, bandaged3=?, race2x2=?, race3x3=?, marathon4=?, marathon5=?, keymappings=?
       WHERE username=?
     `;
 
@@ -221,7 +288,7 @@ async function updateUsers2(data) {
       data.audioon, data.background, data.hollow, data.keyboard, data.speed, 
       data.toppll, data.topwhite, data.m_34, data.m_4, data.c_day_bweek, 
       data.c_day2_bweek, data.border_width, data.blind2x2, data.blind3x3, data.marathon, data.marathon2, 
-      data.marathon3, data.bandaged3, data.race2x2, data.race3x3, data.marathon4, data.marathon5,
+      data.marathon3, data.bandaged3, data.race2x2, data.race3x3, data.marathon4, data.marathon5, data.keymappings,
       data.username
     ]; // make sure username is at the end
 
