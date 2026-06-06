@@ -1,5 +1,6 @@
 const express = require("express");
 const CryptoJS = require("crypto-js");
+const jwt = require("jsonwebtoken");
 const { exec } = require('child_process');
 const fs = require('fs');
 const PORT = process.env.PORT || 3002;
@@ -36,7 +37,7 @@ const pool = mysql.createPool(config2).promise();
 app.use(express.json());
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:8000"],
+  origin: "*",
 }));
 
 app.use(bodyParser.text());
@@ -44,7 +45,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); // Enable preflight requests
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 45!')
+  res.send('Bye World again 49!')
 });
 
 app.listen(PORT, () => {
@@ -79,10 +80,10 @@ app.post("/api/portfolio", async (req, res) => {
 
 
 
-app.get("/api/users2", async (req, res) => {
-  const username = req.query.username;
+app.get("/api/users2", authenticateToken, async (req, res) => {
+  const username = req.user.username; 
   const results = await getUserData(username);
-  res.json(results)
+  res.json(results);
 });
 
 app.get("/api/hasuser", async (req, res) => {
@@ -93,13 +94,30 @@ app.get("/api/hasuser", async (req, res) => {
 });
 
 app.put("/api/users2", async (req, res) => {
-  let data = { ...req.body };
-  const results = await addDataUsers2(data[0]);
-  res.json(results)
+  try {
+    let data = { ...req.body };
+    const userPayload = data[0];
+
+    const results = await addDataUsers2(userPayload);
+    
+    const tokenPayload = { ...userPayload };
+    delete tokenPayload.password;
+
+    const token = jwt.sign(tokenPayload, process.env.SQLSALT);
+
+    res.json({
+      success: true,
+      results: results,
+      token: token
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
-app.post("/api/users2", async (req, res) => {
+app.post("/api/users2", authenticateToken, async (req, res) => {
   let data = { ...req.body };
   const results = await updateUsers2(data[0])
   res.json(results);
@@ -116,7 +134,23 @@ console.log("Starting...");
 
 
 
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
+  if (!token) {
+    return res.status(401).json({ error: "Access denied. No token provided." });
+  }
+
+  jwt.verify(token, process.env.SQLSALT, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: "Invalid or expired token." });
+    }
+    
+    req.user = user; 
+    next();
+  });
+}
 
 async function getData(table) {
   try {
@@ -130,7 +164,7 @@ async function getData(table) {
   }
 }
 
-async function getUserData(username, password) {
+async function getUserData(username) {
   try {
     console.log("Reading rows from the Table...");
     let [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
@@ -145,18 +179,39 @@ async function getUserData(username, password) {
 
 async function hasUser(username, password) {
   try {
-    console.log("Reading rows from the Table...");
+    console.log("Checking user authentication...");
     const [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
 
     if (rows.length === 0) {
-      return {user: false, password: false};
+      return { user: false, password: false, token: null };
     }
+
     const bytes = CryptoJS.AES.decrypt(rows[0].password, process.env.SQLSALT);
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    return {user: true, password: originalText === password};
+    const isPasswordValid = originalText === password;
+
+    if (!isPasswordValid) {
+      return { user: true, password: false, token: null };
+    }
+
+    const userPayload = { ...rows[0] };
+    delete userPayload.password; 
+
+    const token = jwt.sign(
+      userPayload, 
+      process.env.SQLSALT
+    );
+
+    return {
+      user: true,
+      password: true,
+      token: token,
+      userData: userPayload
+    };
+
   } catch (err) {
     console.error(err.message);
-    return "error: " + err.message;
+    return { error: err.message };
   }
 }
 
@@ -173,76 +228,31 @@ async function addData(data, table) {
   }
 }
 
+const userFields = [
+  'username', 'password', 'data', 'c_day', 'c_day2', 'c_today', 'c_today2', 'c_week', 'cdate', 'cdate2',
+  'cdate3', 'easy', 'medium', 'oll', 'pll', 'easy2', 'oll2', 'pbl2', 'm_easy', 'm_medium', 'audioon',
+  'background', 'hollow', 'keyboard', 'speed', 'toppll', 'topwhite', 'm_34', 'm_4', 'c_day_bweek',
+  'c_day2_bweek', 'border_width', 'blind2x2', 'blind3x3', 'marathon', 'marathon2', 'marathon3',
+  'bandaged3', 'race2x2', 'race3x3', 'marathon4', 'marathon5', 'keymappings', 'swiperotate', 'marathonglow'
+];
+
+function buildUserValues(data) {
+  return userFields.map(field => {
+    if (field === 'password') {
+      return CryptoJS.AES.encrypt(data.password, process.env.SQLSALT).toString();
+    }
+    return data[field];
+  });
+}
+
 async function addDataUsers2(data) {
   try {
     console.log("data is " + JSON.stringify(data));
-    
-    // The SQL query with placeholders for each value
-    const sql = `
-      INSERT INTO users (
-        username, password, data, c_day, c_day2, c_today, c_today2, c_week, cdate, cdate2, 
-        cdate3, easy, medium, oll, pll, easy2, oll2, pbl2, m_easy, m_medium, audioon, 
-        background, hollow, keyboard, speed, toppll, topwhite, m_34, m_4, c_day_bweek, 
-        c_day2_bweek, border_width, blind2x2, blind3x3, marathon, marathon2, marathon3, 
-        bandaged3, race2x2, race3x3, marathon4, marathon5, keymappings
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?, ?, ?, ?
-      )`;
+    const columns = userFields.join(', ');
+    const placeholders = userFields.map(() => '?').join(', ');
+    const sql = `INSERT INTO users (${columns}) VALUES (${placeholders})`;
 
-    // An array containing all the data values in the same order as the placeholders
-    const values = [
-      data.username,
-      // Use the CryptoJS library to encrypt the password before sending
-      CryptoJS.AES.encrypt(data.password, process.env.SQLSALT).toString(),
-      data.data,
-      data.c_day,
-      data.c_day2,
-      data.c_today,
-      data.c_today2,
-      data.c_week,
-      data.cdate,
-      data.cdate2,
-      data.cdate3,
-      data.easy,
-      data.medium,
-      data.oll,
-      data.pll,
-      data.easy2,
-      data.oll2,
-      data.pbl2,
-      data.m_easy,
-      data.m_medium,
-      data.audioon,
-      data.background,
-      data.hollow,
-      data.keyboard,
-      data.speed,
-      data.toppll,
-      data.topwhite,
-      data.m_34,
-      data.m_4,
-      data.c_day_bweek,
-      data.c_day2_bweek,
-      data.border_width,
-      data.blind2x2,
-      data.blind3x3,
-      data.marathon,
-      data.marathon2,
-      data.marathon3,
-      data.bandaged3,
-      data.race2x2,
-      data.race3x3,
-      data.marathon4,
-      data.marathon5,
-      // Pass the keymappings object directly
-      data.keymappings,
-    ];
-    
-    // Execute the query using the pool and the values array
+    const values = buildUserValues(data);
     const [rows] = await pool.query(sql, values);
     
     return rows;
@@ -271,28 +281,13 @@ async function addSuggestion(data) {
 
 async function updateUsers2(data) {
   try {
-    const query = `
-      UPDATE users 
-      SET data=?, c_day=?, c_day2=?, c_today=?, c_today2=?, c_week=?, cdate=?, cdate2=?, cdate3=?, 
-      easy=?, medium=?, oll=?, pll=?, easy2=?, oll2=?, pbl2=?, m_easy=?, m_medium=?, 
-      audioon=?, background=?, hollow=?, keyboard=?, speed=?, toppll=?, topwhite=?, 
-      m_34=?, m_4=?, c_day_bweek=?, c_day2_bweek=?, border_width=?, blind2x2=?, blind3x3=?, marathon=?, marathon2=?, 
-      marathon3=?, bandaged3=?, race2x2=?, race3x3=?, marathon4=?, marathon5=?, keymappings=?
-      WHERE username=?
-    `;
+    const updateFields = userFields.slice(2); // skip username + password
+    const assignments = updateFields.map(field => `${field}=?`).join(', ');
+    const query = `UPDATE users SET ${assignments} WHERE username=?`;
 
-    const values = [
-      data.data, data.c_day, data.c_day2, data.c_today, data.c_today2, data.c_week, 
-      data.cdate, data.cdate2, data.cdate3, data.easy, data.medium, data.oll, 
-      data.pll, data.easy2, data.oll2, data.pbl2, data.m_easy, data.m_medium, 
-      data.audioon, data.background, data.hollow, data.keyboard, data.speed, 
-      data.toppll, data.topwhite, data.m_34, data.m_4, data.c_day_bweek, 
-      data.c_day2_bweek, data.border_width, data.blind2x2, data.blind3x3, data.marathon, data.marathon2, 
-      data.marathon3, data.bandaged3, data.race2x2, data.race3x3, data.marathon4, data.marathon5, data.keymappings,
-      data.username
-    ]; // make sure username is at the end
-
-    const [rows] = await pool.query(query, values);
+    const values = buildUserValues(data);
+    const updateValues = [...values.slice(2), values[0]];
+    const [rows] = await pool.query(query, updateValues);
     return rows;
   } catch (err) {
     console.error(err);
