@@ -1,29 +1,13 @@
 const express = require("express");
-const CryptoJS = require("crypto-js");
 const jwt = require("jsonwebtoken");
-const { exec } = require('child_process');
-const fs = require('fs');
-const PORT = process.env.PORT || 3002;
-const app = express();
-const bodyParser = require('body-parser');
+const bcrypt = require("bcrypt");
 const cors = require("cors");
-//const sql = require('mssql');
+const bodyParser = require('body-parser');
 const mysql = require('mysql2');
 
-
-const config = {
-    user: process.env.SQLUSERNAME, 
-    password: process.env.SQLPASSWORD,
-    server: 'imisschloedemo.database.windows.net',
-    port: 1433,
-    database: 'free',
-    authentication: {
-        type: 'default'
-    },
-    options: {
-        encrypt: true
-    }
-}
+const PORT = process.env.PORT || 3002;
+const app = express();
+const saltRounds = 10;
 
 const config2 = {
   host: process.env.homeIP,
@@ -35,24 +19,33 @@ const config2 = {
 const pool = mysql.createPool(config2).promise();
 
 app.use(express.json());
-
-app.use(cors({
-  origin: "*",
-}));
-
+app.use(cors({ origin: "*" }));
 app.use(bodyParser.text());
 
-app.options('/api/history', cors()); // Enable preflight requests
+app.options('/api/history', cors()); 
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 49!')
+  res.send('Bye World again 51!')
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
+  if (!token) {
+    return res.status(401).json({ error: "Access denied. No token provided." });
+  }
 
+  jwt.verify(token, process.env.JWTSALT, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: "Invalid or expired token." });
+    }
+    req.user = user; 
+    next();
+  });
+}
+
+// --- Routes ---
 app.get("/api/history2", async (req, res) => {
   const data = await getData('history');
   res.json(data);
@@ -62,9 +55,6 @@ app.get("/api/portfolio", async (req, res) => {
   const data = await getData('portfolio');
   res.json(data);
 });
-
-
-
 
 app.post("/api/history2", async (req, res) => {
   let data = { ...req.body };
@@ -78,19 +68,16 @@ app.post("/api/portfolio", async (req, res) => {
   res.json(results);
 });
 
-
-
 app.get("/api/users2", authenticateToken, async (req, res) => {
   const username = req.user.username; 
   const results = await getUserData(username);
   res.json(results);
 });
 
-app.get("/api/hasuser", async (req, res) => {
-  const username = req.query.username;
-  const password = req.query.password;
+app.post("/api/hasuser", async (req, res) => {
+  const { username, password } = req.body;
   const results = await hasUser(username, password);
-  res.json(results)
+  res.json(results);
 });
 
 app.put("/api/users2", async (req, res) => {
@@ -116,47 +103,25 @@ app.put("/api/users2", async (req, res) => {
   }
 });
 
-
 app.post("/api/users2", authenticateToken, async (req, res) => {
   let data = { ...req.body };
-  const results = await updateUsers2(data[0])
+  const results = await updateUsers2(data[0]);
   res.json(results);
-})
+});
 
 app.post("/api/suggestions", async (req, res) => {
   let data = { ...req.body };
-  const results = await addSuggestion(data[0])
+  const results = await addSuggestion(data[0]);
   res.json(results);
-})
+});
 
-
-console.log("Starting...");
-
-
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: "Access denied. No token provided." });
-  }
-
-  jwt.verify(token, process.env.JWTSALT, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: "Invalid or expired token." });
-    }
-    
-    req.user = user; 
-    next();
-  });
-}
-
+// --- DB Helpers ---
 async function getData(table) {
   try {
-    console.log("Reading rows from the Table...");
+    const allowedTables = ['history', 'portfolio'];
+    if (!allowedTables.includes(table)) throw new Error("Invalid table selection");
+
     const [rows] = await pool.query(`SELECT * FROM ${table}`);
-    console.log(JSON.stringify(rows));
     return rows;
   } catch (err) {
     console.error(err.message);
@@ -166,10 +131,8 @@ async function getData(table) {
 
 async function getUserData(username) {
   try {
-    console.log("Reading rows from the Table...");
     let [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
-    console.log(JSON.stringify(rows));
-    delete rows[0].password;
+    if (rows[0]) delete rows[0].password;
     return rows[0];
   } catch (err) {
     console.error(err.message);
@@ -179,17 +142,13 @@ async function getUserData(username) {
 
 async function hasUser(username, password) {
   try {
-    console.log("Checking user authentication...");
     const [rows] = await pool.query("SELECT * FROM users WHERE username = ? LIMIT 1", [username]);
 
     if (rows.length === 0) {
       return { user: false, password: false, token: null };
     }
 
-    const bytes = CryptoJS.AES.decrypt(rows[0].password, process.env.SQLSALT);
-    const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    const isPasswordValid = originalText === password;
-
+    const isPasswordValid = await bcrypt.compare(password, rows[0].password);
     if (!isPasswordValid) {
       return { user: true, password: false, token: null };
     }
@@ -197,10 +156,7 @@ async function hasUser(username, password) {
     const userPayload = { ...rows[0] };
     delete userPayload.password; 
 
-    const token = jwt.sign(
-      userPayload, 
-      process.env.JWTSALT
-    );
+    const token = jwt.sign(userPayload, process.env.JWTSALT);
 
     return {
       user: true,
@@ -208,22 +164,22 @@ async function hasUser(username, password) {
       token: token,
       userData: userPayload
     };
-
   } catch (err) {
     console.error(err.message);
     return { error: err.message };
   }
 }
 
-
 async function addData(data, table) {
   try {
-    console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO ${table} (ipaddr, mode) VALUES ('${data.ipaddr}', '${data.mode}')`);
-      return rows;
-   
+    const allowedTables = ['history', 'portfolio'];
+    if (!allowedTables.includes(table)) throw new Error("Invalid table selection");
+
+    // Secure parameterized query
+    const [rows] = await pool.query(`INSERT INTO ${table} (ipaddr, mode) VALUES (?, ?)`, [data.ipaddr, data.mode]);
+    return rows;
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return "error: " + err.message;
   }
 }
@@ -236,56 +192,60 @@ const userFields = [
   'bandaged3', 'race2x2', 'race3x3', 'marathon4', 'marathon5', 'keymappings', 'swiperotate', 'marathonglow'
 ];
 
-function buildUserValues(data) {
-  return userFields.map(field => {
+async function buildUserValues(data) {
+  const values = [];
+  for (const field of userFields) {
     if (field === 'password') {
-      return CryptoJS.AES.encrypt(data.password, process.env.SQLSALT).toString();
+      if (data.password == null) {
+        values.push(null);
+      } else {
+        const hashed = await bcrypt.hash(String(data.password), saltRounds);
+        values.push(hashed);
+      }
+    } else {
+      values.push(data[field] == null ? null : data[field]);
     }
-    return data[field];
-  });
+  }
+  return values;
 }
 
 async function addDataUsers2(data) {
   try {
-    console.log("data is " + JSON.stringify(data));
+    if (!data || data.password == null) {
+      throw new Error('Password is required to create an account');
+    }
+
     const columns = userFields.join(', ');
     const placeholders = userFields.map(() => '?').join(', ');
     const sql = `INSERT INTO users (${columns}) VALUES (${placeholders})`;
 
-    const values = buildUserValues(data);
+    const values = await buildUserValues(data);
     const [rows] = await pool.query(sql, values);
-    
     return rows;
-   
   } catch (err) {
-    console.error(err); // Use console.error for errors
+    console.error(err);
     return "error: " + err.message;
   }
 }
 
 async function addSuggestion(data) {
   try {
-    console.log("data is " + JSON.stringify(data));
-    const [rows] = await pool.query(`INSERT INTO suggestions (username, suggestion)  
-      VALUES ('${data.username}', '${data.suggestion}')`);
-      return rows;
-   
+    // Secure parameterized query
+    const [rows] = await pool.query(`INSERT INTO suggestions (username, suggestion) VALUES (?, ?)`, [data.username, data.suggestion]);
+    return rows;
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return "error: " + err.message;
   }
 }
 
-
-
-
 async function updateUsers2(data) {
   try {
-    const updateFields = userFields.slice(2); // skip username + password
+    const updateFields = userFields.slice(2); 
     const assignments = updateFields.map(field => `${field}=?`).join(', ');
     const query = `UPDATE users SET ${assignments} WHERE username=?`;
 
-    const values = buildUserValues(data);
+    const values = await buildUserValues(data);
     const updateValues = [...values.slice(2), values[0]];
     const [rows] = await pool.query(query, updateValues);
     return rows;
@@ -295,7 +255,6 @@ async function updateUsers2(data) {
   }
 }
 
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+app.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});
