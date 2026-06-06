@@ -103,7 +103,7 @@ app.put("/api/users2", async (req, res) => {
     const tokenPayload = { ...userPayload };
     delete tokenPayload.password;
 
-    const token = jwt.sign(tokenPayload, process.env.SQLSALT);
+    const token = jwt.sign(tokenPayload, process.env.JWTSALT);
 
     res.json({
       success: true,
@@ -142,7 +142,7 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: "Access denied. No token provided." });
   }
 
-  jwt.verify(token, process.env.SQLSALT, (err, user) => {
+  jwt.verify(token, process.env.JWTSALT, (err, user) => {
     if (err) {
       return res.status(403).json({ error: "Invalid or expired token." });
     }
@@ -199,7 +199,7 @@ async function hasUser(username, password) {
 
     const token = jwt.sign(
       userPayload, 
-      process.env.SQLSALT
+      process.env.JWTSALT
     );
 
     return {
