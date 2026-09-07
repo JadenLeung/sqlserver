@@ -13,7 +13,7 @@ const DEV = false;
 
 const config = {
   ...(DEV && { socketPath: "/var/run/mysqld/mysqld.sock" }),
-  // host: process.env.homeIP,
+  host: process.env.homeIP,
   user: process.env.SQLUSERNAME2, 
   password: process.env.SQLPASSWORD2,
   database: 'mydb',
