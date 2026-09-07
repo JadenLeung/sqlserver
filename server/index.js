@@ -9,8 +9,10 @@ const PORT = process.env.PORT || 3002;
 const app = express();
 const saltRounds = 10;
 
+const DEV = false;
+
 const config2 = {
-  host: process.env.homeIP,
+  host: DEV ? process.env.homeIP : "localhost",
   user: process.env.SQLUSERNAME2, 
   password: process.env.SQLPASSWORD2,
   database: 'mydb'
