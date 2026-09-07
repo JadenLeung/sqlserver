@@ -11,14 +11,18 @@ const saltRounds = 10;
 
 const DEV = false;
 
-const config2 = {
-  host: DEV ? process.env.homeIP : "localhost",
+const config = {
+  ...(DEV && { socketPath: "/var/run/mysqld/mysqld.sock" }),
+  // host: process.env.homeIP,
   user: process.env.SQLUSERNAME2, 
   password: process.env.SQLPASSWORD2,
-  database: 'mydb'
+  database: 'mydb',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 };
 
-const pool = mysql.createPool(config2).promise();
+const pool = mysql.createPool(config).promise();
 
 app.use(express.json());
 app.use(cors({ origin: "*" }));
