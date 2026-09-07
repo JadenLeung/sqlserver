@@ -25,7 +25,7 @@ app.use(bodyParser.text());
 app.options('/api/history', cors()); 
 
 app.get('/', (req, res) => {
-  res.send('Bye World again 51!')
+  res.send('Bye World again 52!')
 });
 
 function authenticateToken(req, res, next) {
