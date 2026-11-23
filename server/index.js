@@ -195,7 +195,8 @@ const userFields = [
   'cdate3', 'easy', 'medium', 'oll', 'pll', 'easy2', 'oll2', 'pbl2', 'm_easy', 'm_medium', 'audioon',
   'background', 'hollow', 'keyboard', 'speed', 'toppll', 'topwhite', 'm_34', 'm_4', 'c_day_bweek',
   'c_day2_bweek', 'border_width', 'blind2x2', 'blind3x3', 'marathon', 'marathon2', 'marathon3',
-  'bandaged3', 'race2x2', 'race3x3', 'marathon4', 'marathon5', 'keymappings', 'swiperotate', 'marathonglow'
+  'bandaged3', 'race2x2', 'race3x3', 'marathon4', 'marathon5', 'keymappings', 'swiperotate', 'marathonglow',
+  'marathonpll'
 ];
 
 async function buildUserValues(data) {
